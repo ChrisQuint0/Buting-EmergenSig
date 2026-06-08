@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barangay Buting AIO | Demo</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Stellar SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk/dist/stellar-sdk.min.js"></script>
+    <style>
+        :root {
+            --primary: #0b5394; /* Professional Blue */
+            --primary-dark: #073763;
+            --accent: #f1c232; /* Gold/Yellow */
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --success: #10b981;
+            --pending: #f59e0b;
+            --error: #ef4444;
+            --white: #ffffff;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --radius: 12px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { background-color: #cbd5e1; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); line-height: 1.5; -webkit-tap-highlight-color: transparent; max-width: 480px; margin: 0 auto; box-shadow: var(--shadow-lg); min-height: 100vh; position: relative; overflow-x: hidden; }
+
+        /* --- Animations --- */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+
+        /* --- UI Components --- */
+        .btn { display: inline-flex; align-items: center; justify-content: center; padding: 12px 24px; border-radius: var(--radius); font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; font-size: 15px; gap: 8px; width: 100%; text-decoration: none; }
+        .btn-primary { background-color: var(--primary); color: var(--white); }
+        .btn-primary:hover { background-color: var(--primary-dark); transform: translateY(-1px); }
+        .btn-primary:active { transform: translateY(0); }
+        .btn-primary:disabled { background-color: #cbd5e1; cursor: not-allowed; transform: none; }
+
+        .btn-accent { background-color: var(--accent); color: var(--primary-dark); }
+        .btn-outline { background-color: transparent; border: 2px solid var(--primary); color: var(--primary); }
+
+        .card { background: var(--card-bg); padding: 20px; border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid #f1f5f9; margin-bottom: 16px; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-success { background: #dcfce7; color: #166534; }
+        .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-muted { background: #f1f5f9; color: #475569; }
+
+        input, select, textarea { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #e2e8f0; background: #fff; font-size: 16px; transition: border-color 0.2s; margin-top: 6px; font-family: inherit; }
+        input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(11, 83, 148, 0.1); }
+        label { font-size: 14px; font-weight: 600; color: var(--text-muted); }
+
+        /* --- Layout --- */
+        .container { width: 100%; max-width: 480px; margin: 0 auto; padding: 0 20px 100px 20px; }
+        .header { background: var(--primary); color: var(--white); padding: 24px 20px 40px 20px; border-radius: 0 0 30px 30px; margin-bottom: -20px; box-shadow: var(--shadow-lg); }
+        .header-content { display: flex; justify-content: space-between; align-items: center; }
+        .logo-small { width: 40px; height: 40px; background: var(--white); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 900; color: var(--primary); border: 2px solid var(--accent); }
+        
+        /* --- Navigation --- */
+        .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--white); display: flex; justify-content: space-around; padding: 12px; box-shadow: 0 -4px 6px -1px rgb(0 0 0 / 0.05); border-top: 1px solid #f1f5f9; z-index: 100; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: var(--text-muted); text-decoration: none; font-size: 11px; font-weight: 500; gap: 4px; border: none; background: none; cursor: pointer; }
+        .nav-item.active { color: var(--primary); }
+        .nav-icon { width: 24px; height: 24px; }
+
+        /* --- Views --- */
+        .view { display: none; min-height: 100vh; }
+        .view.active { display: block; }
+
+        /* --- Login View --- */
+        #login-view.active { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .login-card { background: var(--white); width: 100%; max-width: 400px; padding: 32px; border-radius: 24px; box-shadow: var(--shadow-lg); text-align: center; }
+        .logo-large { width: 100px; height: 100px; background: var(--white); border-radius: 20px; margin: 0 auto 20px auto; display: flex; align-items: center; justify-content: center; border: 4px solid var(--accent); box-shadow: var(--shadow); position: relative; }
+        .logo-large span { font-size: 24px; font-weight: 900; color: var(--primary); text-align: center; line-height: 1.1; }
+        .demo-shortcuts { margin-top: 30px; text-align: left; }
+        .shortcut-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+        .shortcut-btn { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 12px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; text-align: left; }
+        .shortcut-btn span { display: block; font-size: 10px; color: var(--text-muted); font-weight: 600; margin-bottom: 2px; }
+        .shortcut-btn:hover { border-color: var(--primary); background: #f1f5f9; }
+
+        /* --- Dashboard --- */
+        .welcome-section { margin-top: 20px; }
+        .welcome-name { font-size: 24px; font-weight: 800; color: var(--white); }
+        .role-badge { background: rgba(255,255,255,0.2); color: var(--white); padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 600; margin-top: 4px; display: inline-block; }
+        
+        .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px; }
+        .summary-card { background: var(--white); padding: 16px; border-radius: var(--radius); box-shadow: var(--shadow); border-bottom: 4px solid var(--primary); }
+        .summary-val { font-size: 20px; font-weight: 800; color: var(--primary); }
+        .summary-label { font-size: 12px; color: var(--text-muted); font-weight: 600; margin-top: 2px; }
+
+        .service-card { display: flex; align-items: flex-start; gap: 16px; padding: 20px; cursor: pointer; transition: transform 0.2s; }
+        .service-card:hover { transform: scale(1.02); }
+        .service-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: #eff6ff; color: var(--primary); }
+        .service-info h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+        .service-info p { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+        .service-status { margin-top: 10px; }
+
+        /* --- Approval Tracker --- */
+        .tracker { margin-top: 24px; padding: 16px; background: #f8fafc; border-radius: 12px; }
+        .tracker-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .tracker-title { font-size: 14px; font-weight: 700; }
+        .tracker-count { font-size: 14px; font-weight: 800; color: var(--primary); }
+        .progress-bar { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-bottom: 16px; }
+        .progress-fill { height: 100%; background: var(--success); width: 0%; transition: width 0.5s ease; }
+        
+        .signatory-list { display: flex; flex-direction: column; gap: 10px; }
+        .signatory-item { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500; }
+        .signatory-status { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #cbd5e1; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .signatory-status.signed { background: var(--success); border-color: var(--success); color: white; }
+        .signatory-status.signed::after { content: "✓"; font-size: 12px; font-weight: 900; }
+
+        /* --- Toast --- */
+        #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: #334155; color: white; padding: 12px 24px; border-radius: 50px; font-size: 14px; font-weight: 600; z-index: 1000; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: var(--shadow-lg); pointer-events: none; }
+        #toast.active { transform: translateX(-50%) translateY(0); }
+
+        /* --- History --- */
+        .history-item { display: flex; flex-direction: column; gap: 4px; padding: 16px; border-left: 4px solid var(--success); }
+        .history-date { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+        .history-desc { font-size: 15px; font-weight: 700; }
+        .history-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+        .history-amount { font-size: 14px; font-weight: 800; color: var(--primary); }
+    </style>
+</head>
+<body>
+
+    <div id="toast">Logged in as Captain</div>
+
+    <!-- Initial Setup View (Visible if not initialized) -->
+    <div id="setup-view" class="view">
+        <div style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;">
+            <div class="login-card fade-in" style="max-width: 500px;">
+                <div class="logo-large"><img src="buting.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 16px;" /></div>
+                <h1 style="font-size: 24px; font-weight: 800; color: var(--primary);">System Initialization</h1>
+                <p style="color: var(--text-muted); font-size: 14px; margin-top: 8px; margin-bottom: 24px;">This demo requires setting up a real 3-of-5 multi-sig account on the Stellar Testnet. This will generate unique cryptographic keys for the Captain and Council.</p>
+                
+                <div id="setup-progress-container" style="display: none; text-align: left; margin-bottom: 20px;">
+                    <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px;">SETUP STATUS</div>
+                    <div id="setup-log" style="font-family: 'Roboto Mono', monospace; font-size: 11px; background: #f1f5f9; padding: 12px; border-radius: 8px; max-height: 150px; overflow-y: auto;"></div>
+                </div>
+
+                <button id="run-setup-btn" class="btn btn-primary" onclick="runInitialization()">Initialize Demo Environment</button>
+                <p style="font-size: 11px; color: var(--text-muted); margin-top: 16px;">This takes about 10-15 seconds and uses the Stellar Friendbot.</p>
+                
+                <button onclick="resetDemo()" style="background:none; border:none; color:var(--text-muted); font-size:11px; text-decoration:underline; cursor:pointer; margin-top:20px;">Reset & Clear Local Data</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login View -->
+    <div id="login-view" class="view">
+        <div class="login-card fade-in">
+            <div class="logo-large">
+                <img src="buting.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 16px;" />
+            </div>
+            <h1 style="font-size: 24px; font-weight: 800; color: var(--primary);">Welcome Back</h1>
+            <p style="color: var(--text-muted); font-size: 14px; margin-top: 8px;">Access the Barangay Information & Services Portal</p>
+            
+            <form style="margin-top: 24px; text-align: left;" onsubmit="event.preventDefault(); alert('Please use the Quick Demo Access below.');">
+                <div style="margin-bottom: 16px;">
+                    <label>Email Address</label>
+                    <input type="email" placeholder="name@brgybuting.demo" value="captain@brgybuting.demo">
+                </div>
+                <div style="margin-bottom: 24px;">
+                    <label>Password</label>
+                    <input type="password" placeholder="••••••••" value="password123">
+                </div>
+                <button class="btn btn-primary" type="button" onclick="login('captain')">Sign In</button>
+            </form>
+
+            <div class="demo-shortcuts">
+                <h3 style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Quick Demo Access</h3>
+                <div class="shortcut-grid">
+                    <button class="shortcut-btn" onclick="login('captain')">
+                        <span>Press 1</span>
+                        Captain Marlon
+                    </button>
+                    <button class="shortcut-btn" onclick="login('kagawad1')">
+                        <span>Press 2</span>
+                        Jeffrey Catura
+                    </button>
+                    <button class="shortcut-btn" onclick="login('kagawad2')">
+                        <span>Press 3</span>
+                        Avelino Santos
+                    </button>
+                    <button class="shortcut-btn" onclick="login('kagawad3')">
+                        <span>Press 4</span>
+                        Erlinda Eden
+                    </button>
+                </div>
+            </div>
+
+            <button onclick="resetDemo()" style="background:none; border:none; color:var(--text-muted); font-size:11px; text-decoration:underline; cursor:pointer; margin-top:30px;">Reset Environment & Data</button>
+        </div>
+    </div>
+
+    <!-- Main Dashboard View -->
+    <div id="dashboard-view" class="view">
+        <div class="header">
+            <div class="header-content">
+                <div class="logo-small"><img src="buting.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 6px;" /></div>
+                <div style="text-align: right; display: flex; align-items: center; gap: 8px;">
+                    <button onclick="showView('history-view')" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;">History</button>
+                    <button onclick="logout()" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;">Sign Out</button>
+                    <div style="width: 32px; height: 32px; background: var(--accent); border-radius: 50%;"></div>
+                </div>
+            </div>
+            <div class="welcome-section">
+                <div class="welcome-name" id="user-greeting">Hello, Marlon</div>
+                <div class="role-badge" id="user-role-badge">Barangay Captain</div>
+                <div style="font-size: 10px; color: rgba(255,255,255,0.7); margin-top: 10px; background: rgba(0,0,0,0.2); padding: 6px 12px; border-radius: 6px; word-break: break-all;">
+                    <strong>FUND ACCOUNT:</strong><br><span id="fund-addr-display">GAV7...BUTING</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="summary-val" id="summary-php">₱0.00</div>
+                    <div class="summary-label">Estimated PHP Value</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-val" id="summary-xlm">0 XLM</div>
+                    <div class="summary-label">Current Ledger Balance</div>
+                </div>
+            </div>
+
+            <h2 style="font-size: 18px; font-weight: 800; margin: 32px 0 16px 0;">Our Services</h2>
+            
+            <div class="card service-card" onclick="showView('fund-view')">
+                <div class="service-icon" style="background: #fff7ed; color: #ea580c;">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3zM17 13v-3l-3-3m-4 10l3 3m0-3V7m0 10l3 3m-3-3l-3 3M7 7l3 3"></path></svg>
+                </div>
+                <div class="service-info">
+                    <h3>Emergency Fund Transactions</h3>
+                    <p>Manage spending requests and approvals via multi-sig.</p>
+                    <div class="service-status">
+                        <span class="badge badge-success">Fully Functional</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card service-card" onclick="showToast('Demo Only: Documents module')">
+                <div class="service-icon">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                </div>
+                <div class="service-info">
+                    <h3>Digital Documents</h3>
+                    <p>Request Barangay Clearance and Certificates online.</p>
+                    <div class="service-status">
+                        <span class="badge badge-muted">Coming Soon</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card service-card" onclick="showToast('Demo Only: Incident Reporting')">
+                <div class="service-icon" style="background: #fef2f2; color: #dc2626;">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                </div>
+                <div class="service-info">
+                    <h3>Incident Reporting</h3>
+                    <p>Real-time emergency reporting for quick response.</p>
+                    <div class="service-status">
+                        <span class="badge badge-muted">Coming Soon</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        </div>
+    </div>
+
+    <!-- Emergency Fund View -->
+    <div id="fund-view" class="view">
+        <div class="header">
+            <div class="header-content">
+                <button onclick="showView('dashboard-view')" style="background: none; border: none; color: white; cursor: pointer;">
+                    <svg style="width: 24px; height: 24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                </button>
+                <div style="font-weight: 700;">Fund Transactions</div>
+                <div style="width: 24px;"></div>
+            </div>
+        </div>
+
+        <div class="container" style="margin-top: 20px;">
+            <!-- Proposal Form (Captain Only, if no active proposal) -->
+            <div id="proposal-create-section" style="display: none;">
+                <h2 style="font-size: 20px; font-weight: 800; margin-bottom: 20px;">Create Fund Request</h2>
+                <div class="card">
+                    <div style="margin-bottom: 16px;">
+                        <label>Source Account (Brgy Fund)</label>
+                        <div style="font-size: 11px; color: var(--text-muted); background: #f1f5f9; padding: 10px; border-radius: 8px; border: 1px dashed #cbd5e1; word-break: break-all;" id="source-addr-display">GAV7...BUTING</div>
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <label>Purpose / Description</label>
+                        <input type="text" id="p-purpose" placeholder="e.g. Relief Goods for Block 5">
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <label>Amount (PHP)</label>
+                        <input type="number" id="p-amount" placeholder="5000">
+                    </div>
+                    <div style="margin-bottom: 24px;">
+                        <label>Preferred Merchant</label>
+                        <select id="p-merchant">
+                            <option value="Puregold">Puregold Supermarket</option>
+                            <option value="Generic Pharmacy">Generic Pharmacy</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="createProposal()">Send to Council for Approval</button>
+                </div>
+            </div>
+
+            <!-- Approval Section (Active Proposal) -->
+            <div id="proposal-active-section" style="display: none;">
+                <div class="badge badge-pending" style="margin-bottom: 12px;">Pending Approval</div>
+                <h2 style="font-size: 20px; font-weight: 800; margin-bottom: 4px;" id="active-purpose">Relief Goods Supply</h2>
+                <p style="color: var(--text-muted); font-size: 14px;">Submitted on <span id="active-date">Oct 12, 2026</span></p>
+
+                <div class="card" style="margin-top: 20px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Amount</span>
+                        <span style="font-size: 15px; font-weight: 800; color: var(--primary);" id="active-amount">₱5,000.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Merchant</span>
+                        <span style="font-size: 15px; font-weight: 700;" id="active-merchant">Puregold</span>
+                    </div>
+                </div>
+
+                <div class="tracker">
+                    <div class="tracker-header">
+                        <span class="tracker-title">Council Approval Progress</span>
+                        <span class="tracker-count" id="approval-count">0 / 3</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="approval-progress"></div>
+                    </div>
+                    <div class="signatory-list">
+                        <div class="signatory-item">
+                            <div class="signatory-status" id="status-kagawad1"></div>
+                            <span>Jeffrey Catura (Kagawad)</span>
+                        </div>
+                        <div class="signatory-item">
+                            <div class="signatory-status" id="status-kagawad2"></div>
+                            <span>Avelino Santos (Kagawad)</span>
+                        </div>
+                        <div class="signatory-item">
+                            <div class="signatory-status" id="status-kagawad3"></div>
+                            <span>Erlinda Eden (Kagawad)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 24px;" id="action-area">
+                    <!-- Dynamic Buttons here -->
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="proposal-empty-section" style="display: none; text-align: center; margin-top: 60px;">
+                <div style="font-size: 48px;">📄</div>
+                <h3 style="margin-top: 16px;">No Active Proposals</h3>
+                <p style="color: var(--text-muted); font-size: 14px; margin-top: 8px;">Only the Barangay Captain can initiate a new fund request.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- History View -->
+    <div id="history-view" class="view">
+        <div class="header">
+            <div class="header-content">
+                <button onclick="showView('dashboard-view')" style="background: none; border: none; color: white; cursor: pointer;">
+                    <svg style="width: 24px; height: 24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                </button>
+                <div style="font-weight: 700;">Transaction History</div>
+                <div style="width: 24px;"></div>
+            </div>
+        </div>
+
+        <div class="container" style="margin-top: 24px;">
+            <div id="history-list">
+                <!-- Items here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA & STATE ---
+        const DEMO_USERS = {
+            captain: { name: 'Marlon Servillion', role: 'Barangay Captain', email: 'captain@brgybuting.demo' },
+            kagawad1: { name: 'Jeffrey Catura', role: 'Kagawad', email: 'kagawad1@brgybuting.demo' },
+            kagawad2: { name: 'Avelino Santos', role: 'Kagawad', email: 'kagawad2@brgybuting.demo' },
+            kagawad3: { name: 'Erlinda Eden', role: 'Kagawad', email: 'kagawad3@brgybuting.demo' }
+        };
+
+        const server = new StellarSdk.Horizon.Server('https://horizon-testnet.stellar.org');
+        const networkPassphrase = StellarSdk.Networks.TESTNET;
+        const XLM_TO_PHP = 12.30;
+
+        let state = JSON.parse(localStorage.getItem('brgy_state_v2')) || {
+            initialized: false,
+            fundAccount: null,
+            userKeys: {}, // Maps DEMO_USERS keys to { pub, sec }
+            proposal: null, // { xdr, purpose, amount, merchant, signatures: [], date, id }
+            history: []
+        };
+
+        function saveState() {
+            localStorage.setItem('brgy_state_v2', JSON.stringify(state));
+        }
+
+        async function getFundBalance() {
+            if (!state.fundAccount) return 0;
+            try {
+                const account = await server.loadAccount(state.fundAccount);
+                const native = account.balances.find(b => b.asset_type === 'native');
+                return parseFloat(native.balance);
+            } catch (e) { return 0; }
+        }
+
+        // --- CRYPTO INITIALIZATION ---
+        async function runInitialization() {
+            const btn = document.getElementById('run-setup-btn');
+            const logEl = document.getElementById('setup-log');
+            const container = document.getElementById('setup-progress-container');
+            
+            btn.disabled = true;
+            container.style.display = 'block';
+            logEl.innerHTML = '';
+            
+            const log = (msg) => {
+                logEl.innerHTML += `<div>> ${msg}</div>`;
+                logEl.scrollTop = logEl.scrollHeight;
+            };
+
+            try {
+                log('Generating participant keypairs...');
+                const fundAccount = StellarSdk.Keypair.random();
+                const councilKeys = {};
+                Object.keys(DEMO_USERS).forEach(k => {
+                    const kp = StellarSdk.Keypair.random();
+                    councilKeys[k] = { pub: kp.publicKey(), sec: kp.secret() };
+                });
+
+                log(`Fund Account: ${fundAccount.publicKey().slice(0,8)}...`);
+                log('Requesting Testnet XLM from Friendbot...');
+                const fb = await fetch(`https://friendbot.stellar.org?addr=${fundAccount.publicKey()}`);
+                if (!fb.ok) throw new Error('Friendbot failed');
+                log('Funding successful.');
+
+                log('Building multi-sig configuration...');
+                let account = await server.loadAccount(fundAccount.publicKey());
+                let transaction = new StellarSdk.TransactionBuilder(account, {
+                    fee: StellarSdk.BASE_FEE,
+                    networkPassphrase
+                });
+
+                // Add participants as signers
+                Object.values(councilKeys).forEach(keys => {
+                    transaction.addOperation(StellarSdk.Operation.setOptions({
+                        signer: { ed25519PublicKey: keys.pub, weight: 1 }
+                    }));
+                });
+
+                // Set 3-of-X thresholds and remove master
+                transaction.addOperation(StellarSdk.Operation.setOptions({
+                    lowThreshold: 3, medThreshold: 3, highThreshold: 3, masterWeight: 0
+                }));
+
+                const tx = transaction.setTimeout(180).build();
+                tx.sign(fundAccount);
+                
+                log('Submitting setup to network...');
+                await server.submitTransaction(tx);
+
+                state.fundAccount = fundAccount.publicKey();
+                state.userKeys = councilKeys;
+                state.initialized = true;
+                saveState();
+
+                log('DEMO ENVIRONMENT READY!');
+                setTimeout(() => showView('login-view'), 1500);
+
+            } catch (e) {
+                log(`<span style="color:red">ERROR: ${e.message}</span>`);
+                btn.disabled = false;
+            }
+        }
+
+        // --- WORKFLOW & SIGNING ---
+        async function createProposal() {
+            const purpose = document.getElementById('p-purpose').value;
+            const amountPHP = parseFloat(document.getElementById('p-amount').value);
+            const merchant = document.getElementById('p-merchant').value;
+            const dest = 'GAU2JVP3LT5UQ3GMZKF75E2RWPSLNSKQO22VZSKG7B6HO6F6HX47O4AV';
+
+            if (!purpose || isNaN(amountPHP)) return alert('Fill all fields correctly');
+
+            // Convert PHP to XLM
+            const amountXLM = (amountPHP / XLM_TO_PHP).toFixed(7);
+
+            showToast(`Converting ₱${amountPHP.toLocaleString()} to ${amountXLM} XLM...`);
+            try {
+                const account = await server.loadAccount(state.fundAccount);
+                const tx = new StellarSdk.TransactionBuilder(account, {
+                    fee: StellarSdk.BASE_FEE,
+                    networkPassphrase
+                })
+                .addOperation(StellarSdk.Operation.payment({
+                    destination: dest,
+                    asset: StellarSdk.Asset.native(),
+                    amount: amountXLM.toString()
+                }))
+                .setTimeout(180)
+                .build();
+
+                state.proposal = {
+                    xdr: tx.toXDR(),
+                    purpose,
+                    amountPHP: amountPHP,
+                    amount: parseFloat(amountXLM),
+                    merchant,
+                    destination: dest,
+                    signatures: [],
+                    date: new Date().toLocaleDateString(),
+                    id: 'TX-' + Math.floor(1000 + Math.random() * 9000)
+                };
+                saveState();
+                showToast('Proposal built & recorded');
+                render();
+            } catch (e) {
+                alert('Failed to build: ' + e.message);
+            }
+        }
+
+        function signProposal() {
+            if (!state.proposal) return;
+            const userSec = state.userKeys[state.currentUser].sec;
+            const kp = StellarSdk.Keypair.fromSecret(userSec);
+
+            try {
+                const tx = StellarSdk.TransactionBuilder.fromXDR(state.proposal.xdr, networkPassphrase);
+                tx.sign(kp);
+                
+                state.proposal.xdr = tx.toXDR();
+                state.proposal.signatures.push(state.currentUser);
+                saveState();
+                showToast('Cryptographically Signed');
+                render();
+            } catch (e) {
+                alert('Sign failed: ' + e.message);
+            }
+        }
+
+        async function finalizeTransaction() {
+            showToast('Finalizing & Submitting...');
+            try {
+                const tx = StellarSdk.TransactionBuilder.fromXDR(state.proposal.xdr, networkPassphrase);
+                const result = await server.submitTransaction(tx);
+                
+                const historyItem = {
+                    ...state.proposal,
+                    status: 'Completed',
+                    hash: result.hash,
+                    council: state.proposal.signatures.map(k => DEMO_USERS[k].name.split(' ')[0]),
+                    fee: '0.00001'
+                };
+                
+                state.history.unshift(historyItem);
+                state.proposal = null;
+                saveState();
+                showView('history-view');
+            } catch (e) {
+                alert('Submission failed: ' + e.message);
+            }
+        }
+
+        // --- NAVIGATION & UI ---
+        function showView(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+            render();
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg; t.classList.add('active');
+            setTimeout(() => t.classList.remove('active'), 3000);
+        }
+
+        function login(u) { state.currentUser = u; saveState(); showView('dashboard-view'); }
+        function logout() { state.currentUser = null; saveState(); showView('login-view'); }
+
+        function resetDemo() {
+            if (confirm('This will clear all local demo accounts, history, and cryptographic keys. Continue?')) {
+                localStorage.removeItem('brgy_state_v2');
+                location.reload();
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === '1') login('captain');
+            if (e.key === '2') login('kagawad1');
+            if (e.key === '3') login('kagawad2');
+            if (e.key === '4') login('kagawad3');
+        });
+
+        // --- RENDER ---
+        async function render() {
+            if (!state.initialized) {
+                document.getElementById('setup-view').classList.add('active');
+                return;
+            }
+            if (!state.currentUser) {
+                document.getElementById('login-view').classList.add('active');
+                return;
+            }
+
+            const user = DEMO_USERS[state.currentUser];
+            document.getElementById('user-greeting').textContent = `Hello, ${user.name.split(' ')[0]}`;
+            document.getElementById('user-role-badge').textContent = user.role;
+            document.getElementById('fund-addr-display').textContent = state.fundAccount;
+
+            const balXLM = await getFundBalance();
+            const summaryXlmEl = document.getElementById('summary-xlm');
+            if (summaryXlmEl) summaryXlmEl.textContent = `${balXLM.toLocaleString()} XLM`;
+            const summaryPhpEl = document.getElementById('summary-php');
+            if (summaryPhpEl) summaryPhpEl.textContent = `₱${(balXLM * XLM_TO_PHP).toLocaleString(undefined, {minimumFractionDigits:2})}`;
+
+            const createSec = document.getElementById('proposal-create-section');
+            const activeSec = document.getElementById('proposal-active-section');
+            const emptySec = document.getElementById('proposal-empty-section');
+            const actionArea = document.getElementById('action-area');
+
+            if (!state.proposal) {
+                activeSec.style.display = 'none';
+                if (state.currentUser === 'captain') {
+                    createSec.style.display = 'block'; emptySec.style.display = 'none';
+                    document.getElementById('source-addr-display').textContent = state.fundAccount;
+                } else {
+                    createSec.style.display = 'none'; emptySec.style.display = 'block';
+                }
+            } else {
+                createSec.style.display = 'none'; emptySec.style.display = 'none'; activeSec.style.display = 'block';
+                document.getElementById('active-purpose').textContent = state.proposal.purpose;
+                document.getElementById('active-amount').textContent = `₱${(state.proposal.amount * XLM_TO_PHP).toLocaleString()} (${state.proposal.amount} XLM)`;
+                document.getElementById('active-merchant').textContent = state.proposal.merchant;
+                document.getElementById('active-date').textContent = state.proposal.date;
+
+                const sigCount = state.proposal.signatures.length;
+                document.getElementById('approval-count').textContent = `${sigCount} / 3`;
+                document.getElementById('approval-progress').style.width = `${(sigCount / 3) * 100}%`;
+
+                ['kagawad1', 'kagawad2', 'kagawad3'].forEach(k => {
+                    const el = document.getElementById(`status-${k}`);
+                    if (state.proposal.signatures.includes(k)) el.classList.add('signed');
+                    else el.classList.remove('signed');
+                });
+
+                actionArea.innerHTML = '';
+                if (state.currentUser.startsWith('kagawad')) {
+                    if (state.proposal.signatures.includes(state.currentUser)) {
+                        actionArea.innerHTML = '<div class="card" style="text-align:center; color: var(--success); font-weight:700;">✓ Signature Applied (Sec Key Used)</div>';
+                    } else {
+                        actionArea.innerHTML = '<button class="btn btn-primary" onclick="signProposal()">Sign Proposal with Secret Key</button>';
+                    }
+                } else {
+                    if (sigCount >= 3) {
+                        actionArea.innerHTML = `<button class="btn btn-primary" onclick="finalizeTransaction()">Broadcast Fully Signed Tx</button>`;
+                    } else {
+                        actionArea.innerHTML = `<button class="btn btn-primary" disabled>Waiting for ${3-sigCount} more signs</button>`;
+                    }
+                }
+            }
+
+            document.getElementById('history-list').innerHTML = state.history.map(item => `
+                <div class="card history-item">
+                    <div class="history-date">${item.date} • ${item.id}</div>
+                    <div class="history-desc">${item.purpose}</div>
+                    <div class="history-meta">
+                        <div class="history-amount">₱${(item.amount * XLM_TO_PHP).toLocaleString()}</div>
+                        <span class="badge badge-success">Finalized</span>
+                    </div>
+                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 8px; display: flex; justify-content: space-between;">
+                        <span>Approvers: ${item.council.join(', ')}</span>
+                        <a href="https://stellar.expert/explorer/testnet/tx/${item.hash}" target="_blank" style="color:var(--primary); font-weight:700;">VERIFY ON LEDGER ↗</a>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        render();
+
+        // Initial Render logic
+        if (state.initialized) {
+            if (state.currentUser) {
+                showView('dashboard-view');
+            } else {
+                showView('login-view');
+            }
+        } else {
+            showView('setup-view');
+        }
+    </script>
+</body>
+</html>
